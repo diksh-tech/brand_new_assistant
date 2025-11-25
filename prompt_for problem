@@ -1,0 +1,44 @@
+Problem
+In the database, for the same date and same flight number, there can be multiple flight entries. These flights may have different or identical start and end stations. When we query for details of a flight which is more than 1 with same flight number(e.g., flight number 215), the system currently returns random details of the same fligt number but not which we needed, which is incorrect.
+ 
+Proposed Solution
+We will handle this issue at the MCP server level. Currently, the MCP server uses basic tools that directly make MongoDB queries. For example, when the LLM calls a tool like get_basic_flight_details(), it internally invokes make_query().
+To fix the problem, we will introduce an intermediate function in or after calling make_query(). This function will be made global and called in the tools in which we need it. This function will:
+ 
+Extract key parameters from the user query:
+ 
+carrier
+flight number
+date of origin
+ 
+Query MongoDB using count_documents() to find all matching documents. This query will return:
+ 
+Document IDs
+Relevant fields (e.g., start station, end station)
+Count of matching documents
+ 
+Decision flow:
+ 
+If count == 1:
+Proceed with the existing flow (normal query and summarization).
+If count > 1:
+ 
+Without calling the LLM, display a selection box on the UI showing:
+ 
+Flight number
+Start station
+End station
+Each option will have a radio button bound to the corresponding document ID.
+ 
+Prompt the user to select the specific flight they want.
+ 
+After user selection:
+ 
+Use the selected document ID to query MongoDB with find_one() and apply projections to fetch detailed flight information.
+Pass this data to the Summarizer LLM for generating the final response.
+ 
+Key Constraint
+Currently, the system calls the LLM twice. This solution must ensure we do not exceed two LLM calls:
+ 
+check this approch if its correct or not
+ 
